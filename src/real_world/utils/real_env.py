@@ -101,7 +101,7 @@ class RealEnv:
             self.robot = XARM7(gripper_enable=gripper_enable, speed=speed)
             self.gripper_enable = gripper_enable
 
-        self.bbox = np.array([[0.0, 0.6], [-0.35, 0.45], [-0.10, 0.05]])  # the world frame robot workspace
+        self.bbox = np.array([[0.0, 0.6], [-0.35, 0.45], [-0.20, 0.05]])  # the world frame robot workspace
         self.eef_point = np.array([[0.0, 0.0, 0.175]])  # the eef point in the gripper frame
         self.world_y = 0.01  # the world y coordinate of the eef during action
         self.state = None

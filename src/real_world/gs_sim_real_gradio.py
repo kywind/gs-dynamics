@@ -115,7 +115,7 @@ class DynamicsVisualizer:
         self.vis_path = vis_path
         self.gs_vis_path = gs_vis_path
 
-        self.visualize_3d = False
+        self.visualize_3d = True
         self.vis_cam_id = 0
 
         self.pm = PerceptionModule(vis_path,device)
@@ -135,7 +135,9 @@ class DynamicsVisualizer:
             gripper_enable=self.use_gripper,
         )
 
-        self.save_for_demo = False
+        self.save_for_demo = True
+        self.obj_name = None
+        self.obj_names_seg = args.obj_names_seg
 
     def __enter__(self):
         self.env.start(exposure_time=self.exposure_time)
@@ -152,7 +154,7 @@ class DynamicsVisualizer:
         print('env stopped')
 
     def reset(self, train_gs=True):
-        pcd, imgs, masks = self.pm.get_tabletop_points_env(self.env, obj_names=['rope'], return_imgs=True)
+        pcd, imgs, masks = self.pm.get_tabletop_points_env(self.env, obj_names=self.obj_names_seg, return_imgs=True)
         self.imgs = imgs
         self.masks = masks
         if self.visualize_3d:
@@ -178,9 +180,21 @@ class DynamicsVisualizer:
                 self.obj_name = obj_name
                 curr_save_dir = os.path.join(self.save_dir, obj_name)
                 os.makedirs(curr_save_dir, exist_ok=True)
+                o3d.io.write_point_cloud(os.path.join(curr_save_dir, 'pcd.ply'), pcd)
+                R_list = self.env.get_extrinsics()[0]
+                t_list = self.env.get_extrinsics()[1]
+                intr_list = self.env.get_intrinsics()
+                R_list = np.array(R_list)
+                t_list = np.array(t_list)
+                intr_list = np.array(intr_list)
+                np.save(os.path.join(curr_save_dir, 'R_list.npy'), R_list)
+                np.save(os.path.join(curr_save_dir, 't_list.npy'), t_list)
+                np.save(os.path.join(curr_save_dir, 'intr_list.npy'), intr_list)
                 for v in range(4):
                     img_save = Image.fromarray((imgs[v]).astype(np.uint8))
                     img_save.save(os.path.join(curr_save_dir, f'img_{v}.png'))
+                    mask_save = Image.fromarray((masks[v] * 255).astype(np.uint8))
+                    mask_save.save(os.path.join(curr_save_dir, f'mask_{v}.png'))
                     save_to_splat(
                         pts=self.gs_trainer.params['means3D'].detach().cpu().numpy(),
                         colors=self.gs_trainer.params['rgb_colors'].detach().cpu().numpy(),
@@ -779,6 +793,7 @@ if __name__ == '__main__':
     arg_parser.add_argument('--gs_config', type=str, default='config/gs/default.yaml')
     arg_parser.add_argument('--epoch', type=str, default='latest')
     args = arg_parser.parse_args()
+    args.obj_names_seg = ['rope']  # TODO: change to object names
     with open(args.config, 'r') as f:
         config = yaml.load(f, Loader=yaml.CLoader)
     with open(args.gs_config, 'r') as f:
